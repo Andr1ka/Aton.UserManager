@@ -1,3 +1,3 @@
 create and appy migrations
 dotnet ef migrations add InitialCreate -s WebApi -p Persistence
-dotnet ef database update --project WebApi --startup-project Persistanse
+dotnet ef database update --project WebApi --startup-project Persistense
