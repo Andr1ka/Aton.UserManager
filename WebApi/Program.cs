@@ -1,4 +1,10 @@
 
+using Microsoft.EntityFrameworkCore;
+using Persistence.Context;
+using Persistence.Interfaces;
+using Persistence.Repositories;
+using Services.Users;
+
 namespace WebApi
 {
     public class Program
@@ -9,8 +15,15 @@ namespace WebApi
 
             // Add services to the container.
 
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+            builder.Services.AddScoped<IUserService, UserService>();
+
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+            
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
