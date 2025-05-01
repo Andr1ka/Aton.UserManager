@@ -22,9 +22,6 @@ namespace Domain
 
         public bool Admin { get; set; } = false;
 
-
-
-
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
         public string CreatedBy { get; set; } = string.Empty;
