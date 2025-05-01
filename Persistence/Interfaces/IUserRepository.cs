@@ -15,15 +15,15 @@ namespace Persistence.Interfaces
             bool isAdmin,
             string createdBy);
 
-        Task<bool> UpdateUserNameAsync(string login, string newName, string modifiedBy);
+        Task<User?> UpdateUserNameAsync(string login, string newName, string modifiedBy);
 
-        Task<bool> UpdateUserGenderAsync(string login, GenderType newGender, string modifiedBy);
+        Task<User?> UpdateUserGenderAsync(string login, GenderType newGender, string modifiedBy);
 
-        Task<bool> UpdateUserBirthdayAsync(string login, DateTime newBirthday, string modifiedBy);
+        Task<User?> UpdateUserBirthdayAsync(string login, DateTime newBirthday, string modifiedBy);
 
-        Task<bool> UpdateUserPasswordAsync(string login, string newPassword, string modifiedBy);
+        Task<User?> UpdateUserPasswordAsync(string login, string newPassword, string modifiedBy);
 
-        Task<bool> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy);
+        Task<User?> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy);
 
         Task<IEnumerable<User>> GetActiveUsersSortedByCreationAsync();
 
@@ -33,9 +33,9 @@ namespace Persistence.Interfaces
 
         Task<IEnumerable<User>> GetUsersOlderThanAsync(int age);
 
-        Task<bool> DeleteUserAsync(string login, bool softDelete, string revokedBy);
+        Task DeleteUserAsync(string login, bool softDelete, string revokedBy);
 
-        Task<bool> RestoreUserAsync(string login, string modifiedBy);
+        Task<User?> RestoreUserAsync(string login, string modifiedBy);
 
         Task<bool> IsLoginAvailableAsync(string login);
         Task<bool> IsUserActiveAsync(string login);

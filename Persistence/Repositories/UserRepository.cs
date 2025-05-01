@@ -35,36 +35,36 @@ namespace Persistence.Repositories
             return user;
         }
 
-        public async Task<bool> DeleteUserAsync(string login, bool softDelete, string revokedBy)
+        public async Task DeleteUserAsync(string login, bool softDelete, string revokedBy)
         {
             var user = await GetUserByLoginAsync(login);
 
-            if (user is null) {return false;}
+            if (user is null) { return; }
 
             if (softDelete)
             {
+                if (user.RevokedOn is not null) return;
+
                 user.ModifiedOn = DateTime.UtcNow;
+                user.ModifiedBy = revokedBy;
                 user.RevokedOn = DateTime.UtcNow;
                 user.RevokedBy = revokedBy;
 
-                await _dbContext.SaveChangesAsync();
 
-                return true;
+
+                await _dbContext.SaveChangesAsync();
             }
             else
             {
-
                 _dbContext.Users.Remove(user);
                 await _dbContext.SaveChangesAsync();
-
-                return true;
             }
         }
 
         public async Task<IEnumerable<User>> GetActiveUsersSortedByCreationAsync()
         {
             var usersList = await _dbContext.Users
-                 .Where(u => u.RevokedOn != null)
+                 .Where(u => u.RevokedOn == null)
                  .AsNoTracking()
                  .OrderBy(x => x.CreatedOn)
                  .ToListAsync();
@@ -74,187 +74,120 @@ namespace Persistence.Repositories
 
         public async Task<User?> GetUserByCredentialsAsync(string login, string password)
         {
-            return await GetUserByLoginAsync(login);
-        }
-
-        public async Task<User?> GetUserByLoginAsync(string login)
-        {
-            var user = await _dbContext.Users.FindAsync(login);
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login && u.Password == password && u.RevokedOn == null);
 
             return user;
         }
 
-        public Task<IEnumerable<User>> GetUsersOlderThanAsync(int age)
+        public async Task<User?> GetUserByLoginAsync(string login)
         {
-            throw new NotImplementedException();
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login);
+
+            return user;
+        }
+
+        public async Task<IEnumerable<User>> GetUsersOlderThanAsync(int age)
+        {
+            var thresholdDate = DateTime.UtcNow.AddYears(-age);
+
+            return await _dbContext.Users
+                                   .Where(u => u.Birthday.HasValue && u.Birthday.Value.Date <= thresholdDate.Date && u.RevokedOn == null)
+                                   .AsNoTracking()
+                                   .ToListAsync();
         }
 
         public async Task<bool> IsAdminAsync(string login)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is null) { return false; }
-
-            return user.Admin;
+            var user = await _dbContext.Users
+                                      .AsNoTracking()
+                                      .FirstOrDefaultAsync(u => u.Login == login);
+            return user?.Admin ?? false;
         }
 
         public async Task<bool> IsLoginAvailableAsync(string login)
         {
-            var user = await _dbContext.Users.FindAsync(login);
-
-            if (user is null)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return !await _dbContext.Users.AnyAsync(u => u.Login == login);
         }
 
         public async Task<bool> IsUserActiveAsync(string login)
         {
-            var user = await GetUserByLoginAsync(login);
+            var user = await _dbContext.Users
+                                      .AsNoTracking()
+                                      .Select(u => new { u.Login, u.RevokedOn })
+                                      .FirstOrDefaultAsync(u => u.Login == login);
 
-            if(user is null ) { return false; }
-
-            if(user.RevokedOn is not null)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return user is not null && user.RevokedOn is null;
         }
 
-        public async Task<bool> RestoreUserAsync(string login, string modifiedBy)
+        public async Task<User?> RestoreUserAsync(string login, string modifiedBy)
         {
             var user = await GetUserByLoginAsync(login);
 
-            if (user is not null) 
+            if (user is null || user.RevokedOn is not null)
             {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.RevokedBy = null;
-                user.RevokedOn = null;
-
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
+                return null;
             }
-            else
-            {
-                return false;
-            }
+
+            user.ModifiedOn = DateTime.UtcNow;
+            user.ModifiedBy = modifiedBy;
+            user.RevokedBy = null;
+            user.RevokedOn = null;
+
+            await _dbContext.SaveChangesAsync();
+            return user;
         }
 
-        public async Task<bool> UpdateUserBirthdayAsync(string login, DateTime newBirthday, string modifiedBy)
+
+        public async Task<User?> UpdateUserBirthdayAsync(string login, DateTime newBirthday, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is not null) 
-            {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.Birthday = newBirthday;
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-
+            return await UpdateUserAsync(login, modifiedBy, user => user.Birthday = newBirthday);
         }
 
-        public async Task<bool> UpdateUserGenderAsync(string login, GenderType newGender, string modifiedBy)
+
+        public async Task<User?> UpdateUserGenderAsync(string login, GenderType newGender, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is not null)
-            {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.Gender = newGender;
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return await UpdateUserAsync(login, modifiedBy, user => user.Gender = newGender);
         }
 
-        public async Task<bool> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy)
+
+        public async Task<User?> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is not null)
+            if (!await IsLoginAvailableAsync(newLogin))
             {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.Login = newLogin;
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
+                return null;
             }
-            else
-            {
-                return false;
-            }
+            return await UpdateUserAsync(login, modifiedBy, user => user.Login = newLogin);
         }
 
-        public async Task<bool> UpdateUserNameAsync(string login, string newName, string modifiedBy)
+
+        public async Task<User?> UpdateUserNameAsync(string login, string newName, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is not null)
-            {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.Name = newName;
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return await UpdateUserAsync(login, modifiedBy, user => user.Name = newName);
         }
 
-        public async Task<bool> UpdateUserPasswordAsync(string login, string newPassword, string modifiedBy)
+
+        public async Task<User?> UpdateUserPasswordAsync(string login, string newPassword, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
+            return await UpdateUserAsync(login, modifiedBy, user => user.Password = newPassword);
+        }
 
-            if (user is not null && user.RevokedOn is null)
+
+        private async Task<User?> UpdateUserAsync(string login, string modifiedBy, Action<User> updateAction)
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login);
+
+            if (user is null || user.RevokedOn is not null)
             {
-                user.ModifiedOn = DateTime.Now;
-                user.ModifiedBy = modifiedBy;
-
-                user.Password = newPassword;
-
-                await _dbContext.SaveChangesAsync();
-
-                return true;
+                return null;
             }
-            else
-            {
-                return false;
-            }
+
+            updateAction(user);
+
+            user.ModifiedOn = DateTime.UtcNow;
+            user.ModifiedBy = modifiedBy;
+
+            await _dbContext.SaveChangesAsync();
+            return user;
         }
     }
 }
