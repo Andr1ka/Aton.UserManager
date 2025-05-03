@@ -11,7 +11,7 @@ namespace Services.Users
            string password,
            string name,
            GenderType gender,
-           DateTime birthday,
+           DateTime? birthday,
            bool isAdmin,
            string createdBy);
 

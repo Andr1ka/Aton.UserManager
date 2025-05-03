@@ -7,32 +7,29 @@ namespace Domain
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [RegularExpression(@"^[a-zA-Z0-9]+$")]
-        public string Login { get; set; } = string.Empty;
+        public string Login { get; set; }
 
-        [RegularExpression(@"^[a-zA-Z0-9]+$")]
-        public string Password { get; set; } = string.Empty;
+        public string Password { get; set; }
 
-        [RegularExpression(@"^[a-zA-Zа-яА-Я]+$")]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; }
 
-        public GenderType Gender { get; set; } = GenderType.Unknown;
+        public GenderType Gender { get; set; }
 
         public DateTime? Birthday { get; set; }
 
         public bool Admin { get; set; } = false;
 
-        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedOn { get; set; }
 
-        public string CreatedBy { get; set; } = string.Empty;
+        public string CreatedBy { get; set; }
 
         public DateTime ModifiedOn { get; set; }
 
-        public string ModifiedBy { get; set; } = string.Empty;
+        public string ModifiedBy { get; set; }
 
         public DateTime? RevokedOn { get; set; }
 
-        public string? RevokedBy { get; set; } = string.Empty;
+        public string? RevokedBy { get; set; }
 
     }
 }

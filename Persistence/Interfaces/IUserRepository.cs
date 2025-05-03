@@ -11,7 +11,7 @@ namespace Persistence.Interfaces
             string password,
             string name,
             GenderType gender,
-            DateTime birthday,
+            DateTime? birthday,
             bool isAdmin,
             string createdBy);
 
