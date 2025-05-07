@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Services.Users;
+using Models.Requests;
 
 namespace WebApi.Controllers
 {
@@ -25,7 +25,20 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
+            var result = await _userService.CreateUserAsync(
+                request.Login,
+                request.Password,
+                request.Name,
+                request.Gender,
+                request.Birthday,
+                request.IsAdmin,
+                request.createdBy
+                );
 
+            return result.Match<IActionResult>(
+                Succ: user => Ok(user),
+                Fail: error => BadRequest(error.Message)
+                );
         }
 
     }

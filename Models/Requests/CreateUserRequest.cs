@@ -29,6 +29,6 @@ namespace Models.Requests
         public DateTime? Birthday { get; set; }
 
         [Required]
-        public bool? IsAdmin { get; set; } = false;
+        public bool IsAdmin { get; set; } = false;
     }
 } 
