@@ -1,6 +1,4 @@
-﻿
-
-using Domain;
+﻿using Domain;
 using Domain.Enums;
 using Domain.Exceptions;
 using LanguageExt.Common;
@@ -18,12 +16,12 @@ namespace Services.Users
         }
 
         
-        public async Task<Result<User>> CreateUserAsync(string login, string password, string name, GenderType gender, DateTime? birthday, bool isAdmin, string createdBy)
+        public async Task<Result<User>> CreateUserAsync(string login, string password, string name, GenderType gender, DateTime? birthday, bool isAdmin, string? createdBy)
         {
 
             if (!await _userRepository.IsLoginAvailableAsync(login)) return new Result<User>(new LoginIsAlreadyExistException("login is already exist"));
 
-            if (!await _userRepository.IsAdminAsync(createdBy)) isAdmin = false;
+            if (createdBy is not null && !await _userRepository.IsAdminAsync(createdBy)) isAdmin = false;
 
             var user = await _userRepository.CreateUserAsync(login, password, name, gender, birthday, isAdmin, createdBy);
 
@@ -31,53 +29,58 @@ namespace Services.Users
 
         }
 
-        public async Task DeleteUserAsync(string login, bool softDelete, string revokedBy) 
+        public async Task<Result<User>> DeleteUserAsync(string login, bool softDelete, string revokedBy)
         {
-            if (!await _userRepository.IsAdminAsync(revokedBy)) return;
+            var authResult = await AuthorizeAndGetUserAsync(login, revokedBy, requireAdminOnly: true, allowSelf: false, checkTargetUserActive: false);
 
+            if (authResult.IsFaulted) return authResult;
+
+            var userToDelete = authResult.Match(
+                Succ: user => user,
+                Fail: error => default 
+                );
+
+
+            if (softDelete && userToDelete.RevokedOn is not null)
+            {
+                return new Result<User>(new UserIsRevokedException("user is already revoked"));
+            }
+            
             await _userRepository.DeleteUserAsync(login, softDelete, revokedBy);
+
+            return new Result<User>(userToDelete);
         }
 
         public async Task<Result<IEnumerable<User>>> GetActiveUsersSortedByCreationAsync(string requestedBy)
         {
-           if(await _userRepository.IsAdminAsync(requestedBy))
-           {
-                var usersList = await _userRepository.GetActiveUsersSortedByCreationAsync();
+           if(!await _userRepository.IsAdminAsync(requestedBy)) return new Result<IEnumerable<User>>(new AccessIsDeniedException("access is denied"));
 
-                return new Result<IEnumerable<User>>(usersList);
-           }
-           else
-           {
-                return new Result<IEnumerable<User>>(new AccessIsDeniedException("access is denied"));
-           }
+           var usersList = await _userRepository.GetActiveUsersSortedByCreationAsync();
+
+           return new Result<IEnumerable<User>>(usersList);
         }
 
         public async Task<Result<User>> GetUserByCredentialsAsync(string login, string password, string requestedBy)
         {
+            if(!login.Equals(requestedBy)) return new Result<User>(new AccessIsDeniedException("access is denied"));
 
-            if (!login.Equals(requestedBy)) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, requestedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
+            if (authResult.IsFaulted) return authResult;
 
             var user = await _userRepository.GetUserByCredentialsAsync(login, password);
 
-            if(user is null) return new Result<User>(new UserDoesNotExistException("the user does not exist"));
+            if(user is null)
+            {
+                return new Result<User>(new UserDoesNotExistException("the user does not exist or credentials invalid"));
+            }
 
             return new Result<User>(user);
-
-
         }
 
         public async Task<Result<User>> GetUserByLoginAsync(string login, string requestedBy)
         {
-
-            if (!await _userRepository.IsAdminAsync(requestedBy)) return new Result<User>(new AccessIsDeniedException("access is denied"));
-
-            var user = await _userRepository.GetUserByLoginAsync(login);  
-
-            if(user is  null) return new Result<User>(new UserDoesNotExistException("the user does not exist"));
-            
-            return new Result<User>(user);
+            return await AuthorizeAndGetUserAsync(login, requestedBy, requireAdminOnly: true, allowSelf: false, checkTargetUserActive: false);
         }
 
         public async Task<Result<IEnumerable<User>>> GetUsersOlderThanAsync(int age, string requestedBy)
@@ -92,22 +95,20 @@ namespace Services.Users
 
         public async Task<Result<User>> RestoreUserAsync(string login, string modifiedBy)
         {
-            if (await _userRepository.IsAdminAsync(modifiedBy)) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: true, allowSelf: false, checkTargetUserActive: false);
 
-            var user = await _userRepository.RestoreUserAsync(login, modifiedBy);
+            if (authResult.IsFaulted) return authResult;
 
-            if(user is null) return new Result<User>(new UserDoesNotExistException("the user does not exist or has not been revoked"));
+            var restoredUser = await _userRepository.RestoreUserAsync(login, modifiedBy);
 
-            return new Result<User>(user);
+            return new Result<User>(restoredUser);
         }
 
         public async Task<Result<User>> UpdateUserBirthdayAsync(string login, DateTime newBirthday, string modifiedBy)
         {
-            if (!(await _userRepository.IsAdminAsync(modifiedBy) || login.Equals(modifiedBy))) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (await _userRepository.GetUserByLoginAsync(login) is null) return new Result<User>(new UserDoesNotExistException("user does not exist"));
-
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
+            if (authResult.IsFaulted) return authResult;
 
             var user = await _userRepository.UpdateUserBirthdayAsync(login, newBirthday, modifiedBy);
 
@@ -116,11 +117,9 @@ namespace Services.Users
 
         public async Task<Result<User>> UpdateUserGenderAsync(string login, GenderType newGender, string modifiedBy)
         {
-            if (!(await _userRepository.IsAdminAsync(modifiedBy) || login.Equals(modifiedBy))) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (await _userRepository.GetUserByLoginAsync(login) is null) return new Result<User>(new UserDoesNotExistException("user does not exist"));
-
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
+            if (authResult.IsFaulted) return authResult;
 
             var user = await _userRepository.UpdateUserGenderAsync(login, newGender, modifiedBy);
 
@@ -129,14 +128,15 @@ namespace Services.Users
 
         public async Task<Result<User>> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy)
         {
-            if (!(await _userRepository.IsAdminAsync(modifiedBy) || login.Equals(modifiedBy))) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (await _userRepository.GetUserByLoginAsync(login) is null) return new Result<User>(new UserDoesNotExistException("user does not exist"));
+            if (authResult.IsFaulted) return authResult;
 
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
-                    
-            if(await _userRepository.IsLoginAvailableAsync(newLogin)) return new Result<User>(new LoginIsAlreadyExistException("login must be unique"));
-
+            if (!await _userRepository.IsLoginAvailableAsync(newLogin))
+            {
+                return new Result<User>(new LoginIsAlreadyExistException("new login is already taken"));
+            }
+            
             var user = await _userRepository.UpdateUserLoginAsync(login, newLogin, modifiedBy);
 
             return new Result<User>(user);
@@ -144,24 +144,20 @@ namespace Services.Users
 
         public async Task<Result<User>> UpdateUserNameAsync(string login, string newName, string modifiedBy)
         {
-            if (!(await _userRepository.IsAdminAsync(modifiedBy) || login.Equals(modifiedBy))) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (await _userRepository.GetUserByLoginAsync(login) is null) return new Result<User>(new UserDoesNotExistException("user does not exist"));
+            if (authResult.IsFaulted) return authResult;
 
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
+            var updatedUser = await _userRepository.UpdateUserNameAsync(login, newName, modifiedBy);
 
-            var user = await _userRepository.UpdateUserNameAsync(login, newName, modifiedBy);
-
-            return new Result<User>(user);
+            return new Result<User>(updatedUser);
         }
 
         public async Task<Result<User>> UpdateUserPasswordAsync(string login, string newPassword, string modifiedBy)
         {
-            if (!(await _userRepository.IsAdminAsync(modifiedBy) || login.Equals(modifiedBy))) return new Result<User>(new AccessIsDeniedException("access is denied"));
+            var authResult = await AuthorizeAndGetUserAsync(login, modifiedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
-            if (await _userRepository.GetUserByLoginAsync(login) is null) return new Result<User>(new UserDoesNotExistException("user does not exist"));
-
-            if (!await _userRepository.IsUserActiveAsync(login)) return new Result<User>(new UserIsRevokedException("user is revoked"));
+            if (authResult.IsFaulted) return authResult;
 
             var user = await _userRepository.UpdateUserPasswordAsync(login, newPassword, modifiedBy);
 
@@ -169,19 +165,27 @@ namespace Services.Users
         }
 
         
-        private async Task<Result<User>> CheckUserAccessAsync(string targetLogin, string requestingUserLogin, bool requireAdminOnly = false, bool allowSelf = false)
+        private async Task<Result<User>> AuthorizeAndGetUserAsync(string targetLogin, string requestingUserLogin, bool requireAdminOnly = false, bool allowSelf = false, bool checkTargetUserActive = true)
         {
             var user = await _userRepository.GetUserByLoginAsync(targetLogin);
 
-            if (user is null) return new Result<User>(new UserDoesNotExistException($"User '{targetLogin}' does not exist"));
+            if (user is null)
+            {
+                return new Result<User>(new UserDoesNotExistException($"user does not exist"));
+            }
 
-            
-            if (!await _userRepository.IsUserActiveAsync(targetLogin)) return new Result<User>(new UserIsRevokedException($"User '{targetLogin}' is revoked"));
+           
+            if (checkTargetUserActive)
+            {
+                if (!await _userRepository.IsUserActiveAsync(targetLogin)) 
+                {
+                    return new Result<User>(new UserIsRevokedException($"user is revoked"));
+                }
+            }
 
             bool isRequestingUserAdmin = await _userRepository.IsAdminAsync(requestingUserLogin);
 
             bool isSelfAction = targetLogin.Equals(requestingUserLogin);
-
            
             bool hasPermission;
             if (requireAdminOnly)
@@ -193,12 +197,11 @@ namespace Services.Users
                 hasPermission = isRequestingUserAdmin || (allowSelf && isSelfAction);
             }
 
-
             if (!hasPermission)
             {
-                return new Result<User>(new AccessIsDeniedException($"User '{requestingUserLogin}' does not have permission to access/modify user '{targetLogin}'"));
+                return new Result<User>(new AccessIsDeniedException("access is denied"));
             }
-            return new Result<User>(user);
+            return new Result<User>(user); 
         }
     }
 }

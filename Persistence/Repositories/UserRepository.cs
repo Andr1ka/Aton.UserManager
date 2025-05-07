@@ -37,14 +37,10 @@ namespace Persistence.Repositories
 
         public async Task DeleteUserAsync(string login, bool softDelete, string revokedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is null) { return; }
+           var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login);
 
             if (softDelete)
             {
-                if (user.RevokedOn is not null) return;
-
                 user.ModifiedOn = DateTime.UtcNow;
                 user.ModifiedBy = revokedBy;
                 user.RevokedOn = DateTime.UtcNow;
@@ -54,6 +50,7 @@ namespace Persistence.Repositories
             {
                 _dbContext.Users.Remove(user);
             }
+
             await _dbContext.SaveChangesAsync();
         }
 
@@ -117,12 +114,7 @@ namespace Persistence.Repositories
 
         public async Task<User?> RestoreUserAsync(string login, string modifiedBy)
         {
-            var user = await GetUserByLoginAsync(login);
-
-            if (user is null || user.RevokedOn is null)
-            {
-                return null;
-            }
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login);
 
             user.ModifiedOn = DateTime.UtcNow;
             user.ModifiedBy = modifiedBy;
@@ -148,10 +140,7 @@ namespace Persistence.Repositories
 
         public async Task<User?> UpdateUserLoginAsync(string login, string newLogin, string modifiedBy)
         {
-            if (!await IsLoginAvailableAsync(newLogin))
-            {
-                return null;
-            }
+            
             return await UpdateUserAsync(login, modifiedBy, user => user.Login = newLogin);
         }
 
@@ -172,7 +161,7 @@ namespace Persistence.Repositories
         {
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Login == login);
 
-            if (user is null || user.RevokedOn is not null)
+            if (user is null) 
             {
                 return null;
             }

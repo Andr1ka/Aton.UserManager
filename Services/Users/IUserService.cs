@@ -33,7 +33,7 @@ namespace Services.Users
 
         Task<Result<IEnumerable<User>>> GetUsersOlderThanAsync(int age, string requestedBy);
 
-        Task DeleteUserAsync(string login, bool softDelete, string revokedBy);
+        Task<Result<User>> DeleteUserAsync(string login, bool softDelete, string revokedBy);
 
         Task<Result<User>> RestoreUserAsync(string login, string modifiedBy);
     }
