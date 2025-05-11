@@ -29,7 +29,7 @@ namespace Services.Users
 
         Task<Result<User>> GetUserByLoginAsync(string login, string requestedBy);
 
-        Task<Result<User>> GetUserByCredentialsAsync(string login, string password, string requestedBy);
+        Task<Result<User>> GetUserByCredentialsAsync(string login, string password);
 
         Task<Result<IEnumerable<User>>> GetUsersOlderThanAsync(int age, string requestedBy);
 

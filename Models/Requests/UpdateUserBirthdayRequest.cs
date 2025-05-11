@@ -2,7 +2,7 @@
 
 namespace Models.Requests
 {
-    internal class UpdateUserBirthdayRequest
+    public class UpdateUserBirthdayRequest
     {
         [Required]
         [MinLength(1)]

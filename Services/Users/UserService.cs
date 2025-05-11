@@ -60,11 +60,10 @@ namespace Services.Users
            return new Result<IEnumerable<User>>(usersList);
         }
 
-        public async Task<Result<User>> GetUserByCredentialsAsync(string login, string password, string requestedBy)
+        public async Task<Result<User>> GetUserByCredentialsAsync(string login, string password)
         {
-            if(!login.Equals(requestedBy)) return new Result<User>(new AccessIsDeniedException("access is denied"));
 
-            var authResult = await AuthorizeAndGetUserAsync(login, requestedBy, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
+            var authResult = await AuthorizeAndGetUserAsync(login, login, requireAdminOnly: false, allowSelf: true, checkTargetUserActive: true);
 
             if (authResult.IsFaulted) return authResult;
 
