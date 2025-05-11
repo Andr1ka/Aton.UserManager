@@ -69,10 +69,7 @@ namespace Services.Users
 
             var user = await _userRepository.GetUserByCredentialsAsync(login, password);
 
-            if(user is null)
-            {
-                return new Result<User>(new UserDoesNotExistException("the user does not exist or credentials invalid"));
-            }
+            if(user is null) return new Result<User>(new AccessIsDeniedException("access is denied"));
 
             return new Result<User>(user);
         }

@@ -1,10 +1,12 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Models.Mapping;
 using Persistence.Context;
 using Persistence.Interfaces;
 using Persistence.Repositories;
-using Services.Users;
 using Serilog;
 using Serilog.Events;
+using Services.Users;
+using System.Reflection;
 
 namespace WebApi
 {
@@ -29,7 +31,22 @@ namespace WebApi
                 Log.Information("Starting web application");
                 var builder = WebApplication.CreateBuilder(args);
 
-                
+                builder.Services.AddEndpointsApiExplorer();
+                builder.Services.AddSwaggerGen(c =>
+                {
+                    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                    {
+                        Title = "User API",
+                        Version = "v1",
+                        Description = "API for working with users"
+                    });
+
+                    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                    c.IncludeXmlComments(xmlPath);
+
+                });
+
                 builder.Host.UseSerilog();
 
                 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -37,6 +54,7 @@ namespace WebApi
 
                 builder.Services.AddScoped<IUserRepository, UserRepository>();
                 builder.Services.AddScoped<IUserService, UserService>();
+                builder.Services.AddAutoMapper(typeof(MappingProfile));
                 builder.Services.AddControllers();
                 builder.Services.AddOpenApi();
 
@@ -44,7 +62,12 @@ namespace WebApi
 
                 if (app.Environment.IsDevelopment())
                 {
-                    app.MapOpenApi();
+                    app.UseSwagger();       
+                    app.UseSwaggerUI(c =>  
+                    {
+                        c.SwaggerEndpoint("/swagger/v1/swagger.json", "User API v1");
+                    });
+
                 }
 
                 app.UseHttpsRedirection();

@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Services.Users;
 using Models.Requests;
+using Models.Responses;
 using Domain.Exceptions;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
 
 namespace WebApi.Controllers
 {
@@ -12,17 +14,18 @@ namespace WebApi.Controllers
     {
         private readonly IUserService _userService;
         private readonly ILogger<UsersController> _logger;
+        private readonly IMapper _mapper;
 
-        public UsersController(IUserService userService, ILogger<UsersController> logger)
+        public UsersController(IUserService userService, ILogger<UsersController> logger, IMapper mapper)
         {
             _userService = userService;
             _logger = logger;
+            _mapper = mapper;
         }
 
         [HttpPost("create")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
-
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for user creation. Login: {Login}", request.Login);
@@ -43,7 +46,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully created user with login: {Login}", user.Login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserSummaryResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -57,7 +60,6 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администратор или сам пользователь могли вызывать этот метод.
         // Требование 2: Изменение имени (Может менять Администратор, либо лично пользователь, если он активен)
         [HttpPut("update/name/{login}")]
         public async Task<IActionResult> UpdateUserName(string login, [FromBody] UpdateUserNameRequest request)
@@ -75,7 +77,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully updated name for user: {Login}", login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -108,7 +110,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully updated gender for user: {Login}", login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -141,7 +143,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully updated birthday for user: {Login}", login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -174,7 +176,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully updated password for user: {Login}", login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -207,7 +209,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully updated login from {OldLogin} to {NewLogin}", login, request.NewLogin);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -229,13 +231,12 @@ namespace WebApi.Controllers
         [HttpGet("active-users")]
         public async Task<IActionResult> GetActiveUsers([FromQuery] string requestedBy) // Предполагаем, что requestedBy передается как query-параметр для авторизации
         {
-
             var result = await _userService.GetActiveUsersSortedByCreationAsync(requestedBy);
             return result.Match<IActionResult>(
                 Succ: users =>
                 {
                     _logger.LogInformation("Successfully retrieved {Count} active users", users.Count());
-                    return Ok(users);
+                    return Ok(_mapper.Map<IEnumerable<UserSummaryResponse>>(users));
                 },
                 Fail: error =>
                 {
@@ -254,13 +255,12 @@ namespace WebApi.Controllers
         [HttpGet("{login}")]
         public async Task<IActionResult> GetUserByLogin(string login, [FromQuery] string requestedBy) 
         {
-
             var result = await _userService.GetUserByLoginAsync(login, requestedBy);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully retrieved user: {Login}", login);
-                    return Ok(new { user.Name, user.Gender, user.Birthday, IsActive = user.RevokedOn == null });
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -280,8 +280,6 @@ namespace WebApi.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> GetUserByLoginAndPassword([FromBody] LoginRequest request)
         {
-
-
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for login attempt. Login: {Login}", request.Login);
@@ -293,7 +291,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully logged in user: {Login}", request.Login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<AuthenticatedUserResponse>(user));
                 },
                 Fail: error =>
                 {
@@ -314,13 +312,12 @@ namespace WebApi.Controllers
         [HttpGet("older-than/{age}")]
         public async Task<IActionResult> GetUsersOlderThan(int age, [FromQuery] string requestedBy) // Предполагаем, что requestedBy передается как query-параметр для авторизации
         {
-
             var result = await _userService.GetUsersOlderThanAsync(age, requestedBy);
             return result.Match<IActionResult>(
                 Succ: users =>
                 {
                     _logger.LogInformation("Successfully retrieved {Count} users older than {Age}", users.Count(), age);
-                    return Ok(users);
+                    return Ok(_mapper.Map<IEnumerable<UserSummaryResponse>>(users));
                 },
                 Fail: error =>
                 {
@@ -352,7 +349,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully deleted user: {Login}", login);
-                    return Ok(user);
+                    return NoContent();
                 },
                 Fail: error =>
                 {
@@ -385,7 +382,7 @@ namespace WebApi.Controllers
                 Succ: user =>
                 {
                     _logger.LogInformation("Successfully restored user: {Login}", login);
-                    return Ok(user);
+                    return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {

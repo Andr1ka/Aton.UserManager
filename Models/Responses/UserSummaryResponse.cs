@@ -1,5 +1,4 @@
 using Domain.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace Models.Responses
 {
