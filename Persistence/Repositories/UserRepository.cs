@@ -27,7 +27,7 @@ namespace Persistence.Repositories
                 Admin = isAdmin,
                 CreatedBy = createdBy,
                 CreatedOn = DateTime.UtcNow,
-                ModifiedBy = createdBy,
+                ModifiedBy = createdBy ?? login,
                 ModifiedOn = DateTime.UtcNow,
             };
 

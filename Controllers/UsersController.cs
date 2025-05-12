@@ -4,6 +4,7 @@ using Domain.Enums;
 using Domain.Exceptions;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Services.Users;
 using System.Security.Claims; // Required for GetCurrentUserLogin placeholder
 
@@ -11,7 +12,7 @@ namespace Aton.UserManager.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    // [Authorize] // Add this later when authentication is set up
+    [Authorize] // Add authorization requirement for all endpoints
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -59,7 +60,7 @@ namespace Aton.UserManager.Controllers
 
         // 1. Create User (Admin only)
         [HttpPost]
-        // [Authorize(Roles = "Admin")] // Add when auth is ready
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         { 
             string createdBy = GetCurrentUserLogin(); 
@@ -128,7 +129,7 @@ namespace Aton.UserManager.Controllers
 
         // 5. Get Active Users (Admin only)
         [HttpGet("active")]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetActiveUsers()
         {
             string requestedBy = GetCurrentUserLogin();
@@ -141,7 +142,7 @@ namespace Aton.UserManager.Controllers
 
         // 6. Get User by Login (Admin only)
         [HttpGet("{login}", Name = nameof(GetUserByLoginAdmin))]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUserByLoginAdmin([FromRoute] string login)
         { 
             string requestedBy = GetCurrentUserLogin(); 
@@ -154,7 +155,7 @@ namespace Aton.UserManager.Controllers
 
         // 7. Get User by Credentials (Self only)
         [HttpPost("login")]
-        // [AllowAnonymous] // Typically login is anonymous, but uses credentials for auth
+        [AllowAnonymous] // Login endpoint should be accessible without authentication
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         { 
             // Service expects requestedBy to be the same as the login being checked
@@ -167,7 +168,7 @@ namespace Aton.UserManager.Controllers
 
         // 8. Get Users Older Than (Admin only)
         [HttpGet("older-than/{age}")]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUsersOlderThan([FromRoute] int age)
         {
             string requestedBy = GetCurrentUserLogin();
@@ -180,7 +181,7 @@ namespace Aton.UserManager.Controllers
 
         // 9. Delete User (Admin only)
         [HttpDelete("{login}")]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser([FromRoute] string login, [FromQuery] bool softDelete = true)
         {
             string revokedBy = GetCurrentUserLogin();
@@ -224,7 +225,7 @@ namespace Aton.UserManager.Controllers
 
         // 10. Restore User (Admin only)
         [HttpPost("{login}/restore")]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RestoreUser([FromRoute] string login)
         {
             string modifiedBy = GetCurrentUserLogin();

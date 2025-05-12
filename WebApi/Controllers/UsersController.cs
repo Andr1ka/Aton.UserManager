@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Services.Users;
 using Models.Requests;
 using Models.Responses;
@@ -23,7 +24,8 @@ namespace WebApi.Controllers
             _mapper = mapper;
         }
 
-        [HttpPost("create")]
+        [AllowAnonymous]
+        [HttpPost("create")]    
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
@@ -60,7 +62,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // Требование 2: Изменение имени (Может менять Администратор, либо лично пользователь, если он активен)
+        [Authorize]
         [HttpPut("update/name/{login}")]
         public async Task<IActionResult> UpdateUserName(string login, [FromBody] UpdateUserNameRequest request)
         {
@@ -93,8 +95,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администратор или сам пользователь могли вызывать этот метод.
-        // Требование 2: Изменение пола (Может менять Администратор, либо лично пользователь, если он активен)
+        [Authorize]
         [HttpPut("update/gender/{login}")]
         public async Task<IActionResult> UpdateUserGender(string login, [FromBody] UpdateUserGenderRequest request)
         {
@@ -126,8 +127,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администратор или сам пользователь могли вызывать этот метод.
-        // Требование 2: Изменение даты рождения (Может менять Администратор, либо лично пользователь, если он активен)
+        [Authorize]
         [HttpPut("update/birthday/{login}")]
         public async Task<IActionResult> UpdateUserBirthday(string login, [FromBody] UpdateUserBirthdayRequest request)
         {
@@ -159,8 +159,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администратор или сам пользователь могли вызывать этот метод.
-        // Требование 3: Изменение пароля (Может менять либо Администратор, либо лично пользователь, если он активен)
+        [Authorize]
         [HttpPut("update/password/{login}")]
         public async Task<IActionResult> UpdateUserPassword(string login, [FromBody] UpdateUserPasswordRequest request)
         {
@@ -192,8 +191,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администратор или сам пользователь могли вызывать этот метод.
-        // Требование 4: Изменение логина (Может менять либо Администратор, либо лично пользователь, если он активен, логин должен оставаться уникальным)
+        [Authorize]
         [HttpPut("update/login/{login}")]
         public async Task<IActionResult> UpdateUserLogin(string login, [FromBody] UpdateUserLoginRequest request)
         {
@@ -226,8 +224,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администраторы могли вызывать этот метод.
-        // Требование 5: Запрос списка всех активных (отсутствует RevokedOn) пользователей, список отсортирован по CreatedOn (Доступно Админам)
+        [Authorize(Roles = "Admin")]
         [HttpGet("active-users")]
         public async Task<IActionResult> GetActiveUsers([FromQuery] string requestedBy) // Предполагаем, что requestedBy передается как query-параметр для авторизации
         {
@@ -250,10 +247,9 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администраторы могли вызывать этот метод.
-        // Требование 6: Запрос пользователя по логину, в списке должны быть имя, пол и дата рождения, статус активный или нет (Доступно Админам)
+        [Authorize(Roles = "Admin")]
         [HttpGet("{login}")]
-        public async Task<IActionResult> GetUserByLogin(string login, [FromQuery] string requestedBy) 
+        public async Task<IActionResult> GetUserByLogin(string login, [FromQuery] string requestedBy)
         {
             var result = await _userService.GetUserByLoginAsync(login, requestedBy);
             return result.Match<IActionResult>(
@@ -274,43 +270,10 @@ namespace WebApi.Controllers
                 }
             );
         }
-        
-        // TODO: Добавить авторизацию, чтобы только сам пользователь мог вызывать этот метод.
-        // Требование 7: Запрос пользователя по логину и паролю (Доступно только самому пользователю, если он активен (отсутствует RevokedOn))
-        [HttpPost("login")]
-        public async Task<IActionResult> GetUserByLoginAndPassword([FromBody] LoginRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                _logger.LogWarning("Invalid model state for login attempt. Login: {Login}", request.Login);
-                return BadRequest(ModelState);
-            }
-           
-            var result = await _userService.GetUserByCredentialsAsync(request.Login, request.Password);
-            return result.Match<IActionResult>(
-                Succ: user =>
-                {
-                    _logger.LogInformation("Successfully logged in user: {Login}", request.Login);
-                    return Ok(_mapper.Map<AuthenticatedUserResponse>(user));
-                },
-                Fail: error =>
-                {
-                    _logger.LogError(error, "Failed to login user: {Login}", request.Login);
-                    return error switch
-                    {
-                        UserDoesNotExistException => NotFound(error.Message),
-                        UserIsRevokedException => Forbid(error.Message),
-                        AccessIsDeniedException => Forbid(error.Message),
-                        _ => BadRequest(error.Message)
-                    };
-                }
-            );
-        }
 
-        // TODO: Добавить авторизацию, чтобы только администраторы могли вызывать этот метод.
-        // Требование 8: Запрос всех пользователей старше определённого возраста (Доступно Админам)
+        [Authorize(Roles = "Admin")]
         [HttpGet("older-than/{age}")]
-        public async Task<IActionResult> GetUsersOlderThan(int age, [FromQuery] string requestedBy) // Предполагаем, что requestedBy передается как query-параметр для авторизации
+        public async Task<IActionResult> GetUsersOlderThan(int age, [FromQuery] string requestedBy)
         {
             var result = await _userService.GetUsersOlderThanAsync(age, requestedBy);
             return result.Match<IActionResult>(
@@ -332,8 +295,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администраторы могли вызывать этот метод.
-        // Требование 9: Удаление пользователя по логину полное или мягкое (При мягком удалении должна происходить простановка RevokedOn и RevokedBy) (Доступно Админам)
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{login}")]
         public async Task<IActionResult> DeleteUser(string login, [FromBody] DeleteUserRequest request)
         {
@@ -365,8 +327,7 @@ namespace WebApi.Controllers
             );
         }
 
-        // TODO: Добавить авторизацию, чтобы только администраторы могли вызывать этот метод.
-        // Требование 10: Восстановление пользователя - Очистка полей (RevokedOn, RevokedBy) (Доступно Админам)
+        [Authorize(Roles = "Admin")]
         [HttpPost("restore/{login}")]
         public async Task<IActionResult> RestoreUser(string login, [FromBody] RestoreUserRequest request)
         {
@@ -397,4 +358,4 @@ namespace WebApi.Controllers
             );
         }
     }
-} 
+}

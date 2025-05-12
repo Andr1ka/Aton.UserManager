@@ -1,12 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Models.Mapping;
 using Persistence.Context;
 using Persistence.Interfaces;
 using Persistence.Repositories;
 using Serilog;
 using Serilog.Events;
+using Services.Auth;
+using Services.Configuration;
 using Services.Users;
 using System.Reflection;
+using System.Text;
 
 namespace WebApi
 {
@@ -31,6 +36,29 @@ namespace WebApi
                 Log.Information("Starting web application");
                 var builder = WebApplication.CreateBuilder(args);
 
+                
+                var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+                builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+                builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSettings.SecretKey))
+                    };
+                });
+ 
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen(c =>
                 {
@@ -45,6 +73,30 @@ namespace WebApi
                     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                     c.IncludeXmlComments(xmlPath);
 
+                    
+                    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    {
+                        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                        Name = "Authorization",
+                        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+                        Scheme = "Bearer"
+                    });
+
+                    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                    {
+                        {
+                            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                            {
+                                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                                {
+                                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                            Array.Empty<string>()
+                        }
+                    });
                 });
 
                 builder.Host.UseSerilog();
@@ -54,6 +106,7 @@ namespace WebApi
 
                 builder.Services.AddScoped<IUserRepository, UserRepository>();
                 builder.Services.AddScoped<IUserService, UserService>();
+                builder.Services.AddScoped<IAuthService, AuthService>();
                 builder.Services.AddAutoMapper(typeof(MappingProfile));
                 builder.Services.AddControllers();
                 builder.Services.AddOpenApi();
@@ -67,10 +120,10 @@ namespace WebApi
                     {
                         c.SwaggerEndpoint("/swagger/v1/swagger.json", "User API v1");
                     });
-
                 }
 
                 app.UseHttpsRedirection();
+                app.UseAuthentication();
                 app.UseAuthorization();
                 app.MapControllers();
 
