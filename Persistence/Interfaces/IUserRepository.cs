@@ -13,7 +13,7 @@ namespace Persistence.Interfaces
             GenderType gender,
             DateTime? birthday,
             bool isAdmin,
-            string? createdBy);
+            string createdBy);
 
         Task<User?> UpdateUserNameAsync(string login, string newName, string modifiedBy);
 

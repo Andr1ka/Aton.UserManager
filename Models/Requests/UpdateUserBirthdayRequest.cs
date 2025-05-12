@@ -6,6 +6,7 @@ namespace Models.Requests
     {
         [Required]
         [MinLength(1)]
+        [MaxLength(50)]
         public string updatedBy { get; set; }
 
         [Required]

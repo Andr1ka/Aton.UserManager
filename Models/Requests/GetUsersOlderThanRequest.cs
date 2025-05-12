@@ -7,6 +7,7 @@ namespace Models.Requests
 
         [Required]
         [MinLength(1)]
+        [MaxLength(50)]
         public string requestedBy { get; set; }
 
         [Required]

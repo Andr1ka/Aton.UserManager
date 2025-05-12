@@ -5,20 +5,25 @@ namespace Models.Requests
 {
     public class CreateUserRequest
     {
+        [MinLength(1)]
+        [MaxLength(50)]
         public string? createdBy { get; set; }
 
         [Required]
         [MinLength(1)]
+        [MaxLength(50)]
         [RegularExpression(@"^[a-zA-Z0-9]+$")]
         public string Login { get; set; }
 
         [Required]
         [MinLength(1)]
+        [MaxLength(100)]
         [RegularExpression(@"^[a-zA-Z0-9]+$")]
         public string Password { get; set; }
 
         [Required]
         [MinLength(1)]
+        [MaxLength(100)]
         [RegularExpression(@"^[a-zA-Zà-ÿÀ-ß]+$")]
         public string Name { get; set; }
 

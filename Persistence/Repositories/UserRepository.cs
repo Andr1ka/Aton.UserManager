@@ -15,7 +15,7 @@ namespace Persistence.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<User> CreateUserAsync(string login, string password, string name, GenderType gender, DateTime? birthday, bool isAdmin, string? createdBy)
+        public async Task<User> CreateUserAsync(string login, string password, string name, GenderType gender, DateTime? birthday, bool isAdmin, string createdBy)
         {
             var user = new User
             {
@@ -26,7 +26,9 @@ namespace Persistence.Repositories
                 Birthday = birthday,
                 Admin = isAdmin,
                 CreatedBy = createdBy,
-                CreatedOn = DateTime.UtcNow
+                CreatedOn = DateTime.UtcNow,
+                ModifiedBy = createdBy,
+                ModifiedOn = DateTime.UtcNow,
             };
 
             _dbContext.Users.Add(user);
