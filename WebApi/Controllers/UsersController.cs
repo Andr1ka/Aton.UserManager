@@ -6,6 +6,7 @@ using Models.Responses;
 using Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
+using System.Security.Claims;
 
 namespace WebApi.Controllers
 {
@@ -24,13 +25,14 @@ namespace WebApi.Controllers
             _mapper = mapper;
         }
 
+
         [AllowAnonymous]
-        [HttpPost("create")]    
-        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterUser([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid model state for user creation. Login: {Login}", request.Login);
+                _logger.LogWarning("Invalid model state for user registration. Login: {Login}", request.Login);
                 return BadRequest(ModelState);
             }
 
@@ -40,8 +42,54 @@ namespace WebApi.Controllers
                 request.Name,
                 request.Gender,
                 request.Birthday,
+                false, 
+                null
+                );
+
+            return result.Match<IActionResult>(
+                Succ: user =>
+                {
+                    _logger.LogInformation("Successfully registered new user with login: {Login}", user.Login);
+                    return Ok(_mapper.Map<UserSummaryResponse>(user));
+                },
+                Fail: error =>
+                {
+                    _logger.LogError(error, "Failed to register user with login: {Login}", request.Login);
+                    return error switch
+                    {
+                        LoginIsAlreadyExistException => Conflict(error.Message),
+                        _ => BadRequest(error.Message)
+                    };
+                }
+            );
+        }
+
+        [Authorize]
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state for user creation. Login: {Login}", request.Login);
+                return BadRequest(ModelState);
+            }
+
+           
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.CreateUserAsync(
+                request.Login,
+                request.Password,
+                request.Name,
+                request.Gender,
+                request.Birthday,
                 request.IsAdmin,
-                request.createdBy
+                authenticatedUserLogin 
                 );
 
             return result.Match<IActionResult>(
@@ -73,7 +121,14 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.UpdateUserNameAsync(login, request.Name, request.updatedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.UpdateUserNameAsync(login, request.Name, authenticatedUserLogin);
 
             return result.Match<IActionResult>(
                 Succ: user =>
@@ -106,7 +161,14 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.UpdateUserGenderAsync(login, request.Gender, request.updatedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.UpdateUserGenderAsync(login, request.Gender, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -138,7 +200,15 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.UpdateUserBirthdayAsync(login, request.Birthday, request.updatedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.UpdateUserBirthdayAsync(login, request.Birthday, authenticatedUserLogin);
+
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -170,7 +240,14 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.UpdateUserPasswordAsync(login, request.NewPassword, request.updatedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.UpdateUserPasswordAsync(login, request.NewPassword, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -202,7 +279,14 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.UpdateUserLoginAsync(login, request.NewLogin, request.updatedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.UpdateUserLoginAsync(login, request.NewLogin, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -226,9 +310,16 @@ namespace WebApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("active-users")]
-        public async Task<IActionResult> GetActiveUsers([FromQuery] string requestedBy) // Предполагаем, что requestedBy передается как query-параметр для авторизации
+        public async Task<IActionResult> GetActiveUsers()
         {
-            var result = await _userService.GetActiveUsersSortedByCreationAsync(requestedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.GetActiveUsersSortedByCreationAsync(authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: users =>
                 {
@@ -237,7 +328,7 @@ namespace WebApi.Controllers
                 },
                 Fail: error =>
                 {
-                    _logger.LogError(error, "Failed to get active users list. Requested by: {RequestedBy}", requestedBy);
+                    _logger.LogError(error, "Failed to get active users list. Requested by: {RequestedBy}", authenticatedUserLogin);
                     return error switch
                     {
                         AccessIsDeniedException => Forbid(error.Message),
@@ -249,9 +340,16 @@ namespace WebApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("{login}")]
-        public async Task<IActionResult> GetUserByLogin(string login, [FromQuery] string requestedBy)
+        public async Task<IActionResult> GetUserByLogin(string login)
         {
-            var result = await _userService.GetUserByLoginAsync(login, requestedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.GetUserByLoginAsync(login, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -273,9 +371,16 @@ namespace WebApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("older-than/{age}")]
-        public async Task<IActionResult> GetUsersOlderThan(int age, [FromQuery] string requestedBy)
+        public async Task<IActionResult> GetUsersOlderThan(int age)
         {
-            var result = await _userService.GetUsersOlderThanAsync(age, requestedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.GetUsersOlderThanAsync(age, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: users =>
                 {
@@ -306,7 +411,14 @@ namespace WebApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.DeleteUserAsync(login, request.softDelete, request.requestedBy);
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.DeleteUserAsync(login, request.softDelete, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -329,7 +441,7 @@ namespace WebApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost("restore/{login}")]
-        public async Task<IActionResult> RestoreUser(string login, [FromBody] RestoreUserRequest request)
+        public async Task<IActionResult> RestoreUser(string login)
         {
 
             if (!ModelState.IsValid)
@@ -337,8 +449,14 @@ namespace WebApi.Controllers
                 _logger.LogWarning("Invalid model state for user restoration. Login: {Login}", login);
                 return BadRequest(ModelState);
             }
+            var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
 
-            var result = await _userService.RestoreUserAsync(login, request.requestedBy);
+            if (string.IsNullOrEmpty(authenticatedUserLogin))
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var result = await _userService.RestoreUserAsync(login, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {

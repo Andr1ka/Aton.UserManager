@@ -5,10 +5,6 @@ namespace Models.Requests
 {
     public class UpdateUserGenderRequest
     {
-        [Required]
-        [MinLength(1)]
-        [MaxLength(50)]
-        public string updatedBy { get; set; }
 
         [Required]
         [EnumDataType(typeof(GenderType))]

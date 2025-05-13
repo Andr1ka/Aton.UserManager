@@ -5,15 +5,11 @@ namespace Models.Requests
 {
     public class UpdateUserNameRequest
     {
-        [Required]
-        [MinLength(1)]
-        [MaxLength(50)]
-        public string updatedBy { get; set; }
 
         [Required]
         [MinLength(1)]
         [MaxLength(100)]
-        [RegularExpression(@"^[a-zA-Zà-ÿÀ-ß]+$")]
+        [RegularExpression(@"^[a-zA-Zï¿½-ï¿½ï¿½-ï¿½]+$")]
         public string Name { get; set; }
 
         

@@ -8,7 +8,8 @@ namespace Models.Mapping
     {
         public MappingProfile()
         {
-            CreateMap<User, UserSummaryResponse>();
+            CreateMap<User, UserSummaryResponse>()
+                .ForMember(dest => dest.IsAdmin, opt => opt.MapFrom(src => src.Admin));
             CreateMap<User, UserDetailResponse>()
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.RevokedOn == null));
         }

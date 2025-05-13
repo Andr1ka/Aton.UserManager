@@ -17,7 +17,7 @@ namespace Domain
 
         public DateTime? Birthday { get; set; }
 
-        public bool Admin { get; set; } = false;
+        public bool Admin { get; set; }
 
         public DateTime CreatedOn { get; set; }
 
