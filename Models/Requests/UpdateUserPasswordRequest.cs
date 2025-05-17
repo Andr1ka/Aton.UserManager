@@ -8,13 +8,12 @@ namespace Models.Requests
     public class UpdateUserPasswordRequest
     {
         /// <summary>
-        /// New password. Must be at least 8 characters long and contain at least one uppercase letter, one number and one special character
+        /// New user password. Must be at least 6 characters long and contain only letters and numbers
         /// </summary>
         [Required]
-        [MinLength(8)]
+        [MinLength(6)]
         [MaxLength(100)]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", 
-            ErrorMessage = "Password must be at least 8 characters long and contain at least one uppercase letter, one number and one special character")]
-        public string NewPassword { get; set; }
+        [RegularExpression(@"^[a-zA-Z0-9]+$")]
+        public string newPassword { get; set; }
     }
 } 

@@ -14,26 +14,24 @@ namespace Models.Requests
         [Required]
         [MinLength(1)]
         [MaxLength(50)]
-        [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Login must contain only letters and numbers")]
+        [RegularExpression(@"^[a-zA-Z0-9]+$")]
         public string Login { get; set; }
 
         /// <summary>
-        /// User's password. Must be at least 8 characters long and contain at least one uppercase letter, one number and one special character
-        /// </summary>
+        /// User's password. Must be at least 6 characters long and contain only letters and numbers
         [Required]
-        [MinLength(8)]
+        [MinLength(6)]
         [MaxLength(100)]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", 
-            ErrorMessage = "Password must be at least 8 characters long and contain at least one uppercase letter, one number and one special character")]
+        [RegularExpression(@"^[a-zA-Z0-9]+$")]
         public string Password { get; set; }
 
         /// <summary>
-        /// User's name. Can contain letters, spaces and hyphens
+        /// User's name. It can contain only Latin and Russian letters.
         /// </summary>
         [Required]
         [MinLength(1)]
         [MaxLength(100)]
-        [RegularExpression(@"^[а-яА-Яa-zA-Z\s-]+$", ErrorMessage = "Name can contain only letters, spaces and hyphens")]
+        [RegularExpression(@"^[а-яА-Яa-zA-Z]+$")]
         public string Name { get; set; }
 
         /// <summary>

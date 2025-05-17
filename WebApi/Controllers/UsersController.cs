@@ -25,9 +25,18 @@ namespace WebApi.Controllers
             _mapper = mapper;
         }
 
-
+        /// <summary>
+        /// Registers a new user in the system
+        /// </summary>
+        /// <param name="request">User registration data including login, password, and personal details</param>
+        /// <response code="200">Returns the newly created user's summary information</response>
+        /// <response code="400">Returned when the request is invalid or validation fails</response>
+        /// <response code="409">Returned when the requested login is already taken</response>
         [AllowAnonymous]
         [HttpPost("register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> RegisterUser([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
@@ -64,8 +73,20 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Creates a new user (requires authentication)
+        /// </summary>
+        /// <param name="request">User creation data including login, password, and personal details</param>
+        /// <response code="200">Returns the newly created user's summary information</response>
+        /// <response code="400">Returned when the request is invalid or validation fails</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="409">Returned when the login is already taken</response>
         [Authorize]
         [HttpPost("create")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
@@ -110,8 +131,23 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates a user's name
+        /// </summary>
+        /// <param name="login">Login of the user to update</param>
+        /// <param name="request">New name value</param>
+        /// <response code="200">Returns the updated user details</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="404">Returned when user is not found</response>
         [Authorize]
         [HttpPut("update/name/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateUserName(string login, [FromBody] UpdateUserNameRequest request)
         {
 
@@ -128,7 +164,7 @@ namespace WebApi.Controllers
                 return Unauthorized("User is not authenticated");
             }
 
-            var result = await _userService.UpdateUserNameAsync(login, request.Name, authenticatedUserLogin);
+            var result = await _userService.UpdateUserNameAsync(login, request.newName, authenticatedUserLogin);
 
             return result.Match<IActionResult>(
                 Succ: user =>
@@ -150,8 +186,23 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates a user's gender
+        /// </summary>
+        /// <param name="login">Login of the user to update</param>
+        /// <param name="request">New gender value</param>
+        /// <response code="200">Returns the updated user details</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="404">Returned when user is not found</response>
         [Authorize]
         [HttpPut("update/gender/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateUserGender(string login, [FromBody] UpdateUserGenderRequest request)
         {
 
@@ -168,7 +219,7 @@ namespace WebApi.Controllers
                 return Unauthorized("User is not authenticated");
             }
 
-            var result = await _userService.UpdateUserGenderAsync(login, request.Gender, authenticatedUserLogin);
+            var result = await _userService.UpdateUserGenderAsync(login, request.newGender, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -189,8 +240,23 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates a user's birthday
+        /// </summary>
+        /// <param name="login">Login of the user to update</param>
+        /// <param name="request">New birthday value</param>
+        /// <response code="200">Returns the updated user details</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="404">Returned when user is not found</response>
         [Authorize]
         [HttpPut("update/birthday/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateUserBirthday(string login, [FromBody] UpdateUserBirthdayRequest request)
         {
 
@@ -207,7 +273,7 @@ namespace WebApi.Controllers
                 return Unauthorized("User is not authenticated");
             }
 
-            var result = await _userService.UpdateUserBirthdayAsync(login, request.Birthday, authenticatedUserLogin);
+            var result = await _userService.UpdateUserBirthdayAsync(login, request.newBirthday, authenticatedUserLogin);
 
             return result.Match<IActionResult>(
                 Succ: user =>
@@ -229,8 +295,23 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates a user's password
+        /// </summary>
+        /// <param name="login">Login of the user to update</param>
+        /// <param name="request">New password value</param>
+        /// <response code="200">Returns the updated user details</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="404">Returned when user is not found</response>
         [Authorize]
         [HttpPut("update/password/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateUserPassword(string login, [FromBody] UpdateUserPasswordRequest request)
         {
 
@@ -247,7 +328,7 @@ namespace WebApi.Controllers
                 return Unauthorized("User is not authenticated");
             }
 
-            var result = await _userService.UpdateUserPasswordAsync(login, request.NewPassword, authenticatedUserLogin);
+            var result = await _userService.UpdateUserPasswordAsync(login, request.newPassword, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
@@ -268,14 +349,31 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates a user's login
+        /// </summary>
+        /// <param name="login">Current login of the user</param>
+        /// <param name="request">New login value</param>
+        /// <response code="200">Returns the updated user details</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="404">Returned when user is not found</response>
+        /// <response code="409">Returned when the new login is already taken</response>
         [Authorize]
         [HttpPut("update/login/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> UpdateUserLogin(string login, [FromBody] UpdateUserLoginRequest request)
         {
 
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid model state for login update. Old login: {OldLogin}, New login: {NewLogin}", login, request.NewLogin);
+                _logger.LogWarning("Invalid model state for login update. Old login: {OldLogin}, New login: {NewLogin}", login, request.newLogin);
                 return BadRequest(ModelState);
             }
 
@@ -286,16 +384,16 @@ namespace WebApi.Controllers
                 return Unauthorized("User is not authenticated");
             }
 
-            var result = await _userService.UpdateUserLoginAsync(login, request.NewLogin, authenticatedUserLogin);
+            var result = await _userService.UpdateUserLoginAsync(login, request.newLogin, authenticatedUserLogin);
             return result.Match<IActionResult>(
                 Succ: user =>
                 {
-                    _logger.LogInformation("Successfully updated login from {OldLogin} to {NewLogin}", login, request.NewLogin);
+                    _logger.LogInformation("Successfully updated login from {OldLogin} to {NewLogin}", login, request.newLogin);
                     return Ok(_mapper.Map<UserDetailResponse>(user));
                 },
                 Fail: error =>
                 {
-                    _logger.LogError(error, "Failed to update login from {OldLogin} to {NewLogin}", login, request.NewLogin);
+                    _logger.LogError(error, "Failed to update login from {OldLogin} to {NewLogin}", login, request.newLogin);
                     return error switch
                     {
                         UserDoesNotExistException => NotFound(error.Message),
@@ -308,8 +406,19 @@ namespace WebApi.Controllers
             );
         }
 
-        [Authorize(Roles = "Admin")]
+        /// <summary>
+        /// Gets a list of all active users
+        /// </summary>
+        /// <response code="200">Returns a list of active users</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when access is denied or user is revoked</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        [Authorize]
         [HttpGet("active-users")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetActiveUsers()
         {
             var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
@@ -338,8 +447,22 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Gets detailed information about a specific user (admin only)
+        /// </summary>
+        /// <param name="login">Login of the user to retrieve</param>
+        /// <response code="200">Returns the user's detailed information</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when user is not an admin</response>
+        /// <response code="404">Returned when user is not found</response>
+        /// <response code="400">Returned when the request is invalid</response>
         [Authorize(Roles = "Admin")]
         [HttpGet("{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetUserByLogin(string login)
         {
             var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
@@ -369,8 +492,20 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Gets a list of users older than specified age (admin only)
+        /// </summary>
+        /// <param name="age">Minimum age of users to retrieve</param>
+        /// <response code="200">Returns a list of users older than specified age</response>
+        /// <response code="400">Returned when the age is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when user is not an admin</response>
         [Authorize(Roles = "Admin")]
         [HttpGet("older-than/{age}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetUsersOlderThan(int age)
         {
             var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
@@ -400,8 +535,23 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Deletes a user (admin only)
+        /// </summary>
+        /// <param name="login">Login of the user to delete</param>
+        /// <param name="request">Deletion confirmation data</param>
+        /// <response code="200">Returned when the user has been successfully deleted</response>
+        /// <response code="400">Returned when the request is invalid</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when user is not an admin</response>
+        /// <response code="404">Returned when user is not found</response>
         [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(string login, [FromBody] DeleteUserRequest request)
         {
 
@@ -439,16 +589,24 @@ namespace WebApi.Controllers
             );
         }
 
+        /// <summary>
+        /// Restores a previously deleted user (admin only)
+        /// </summary>
+        /// <param name="login">Login of the user to restore</param>
+        /// <response code="200">Returns the restored user's information</response>
+        /// <response code="401">Returned when user is not authenticated</response>
+        /// <response code="403">Returned when user is not an admin</response>
+        /// <response code="404">Returned when user is not found</response>
+        /// <response code="400">Returned when the request is invalid</response>
         [Authorize(Roles = "Admin")]
         [HttpPost("restore/{login}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RestoreUser(string login)
         {
-
-            if (!ModelState.IsValid)
-            {
-                _logger.LogWarning("Invalid model state for user restoration. Login: {Login}", login);
-                return BadRequest(ModelState);
-            }
             var authenticatedUserLogin = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (string.IsNullOrEmpty(authenticatedUserLogin))
